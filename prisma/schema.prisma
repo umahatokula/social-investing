@@ -1,0 +1,179 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  BANNED
+}
+
+enum BrokerType {
+  STOCK
+  CRYPTO
+  FOREX
+  OTHER
+}
+
+enum AssetType {
+  EQUITY
+  ETF
+  CRYPTO
+  FOREX
+  FUND
+  OTHER
+}
+
+enum TradeSide {
+  BUY
+  SELL
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  firstName    String?
+  lastName     String?
+  alias        String?  @unique
+  avatarUrl    String?
+  bio          String?
+  role         Role     @default(USER)
+  status       UserStatus @default(ACTIVE)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  brokerAccounts BrokerAccount[]
+  trades         Trade[]
+  holdings       Holding[]
+  performance    PerformanceMetric[]
+  
+  followers      Follow[] @relation("UserFollowers")
+  following      Follow[] @relation("UserFollowing")
+  
+  activities     Activity[]
+  syncLogs       SyncLog[]
+  flags          Flag[]
+}
+
+model BrokerAccount {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  brokerName      String   // e.g. "alpaca", "binance"
+  brokerType      BrokerType
+  accessTokenEnc  String?
+  refreshTokenEnc String?
+  apiKeyEnc       String?
+  apiSecretEnc    String?
+  lastSyncedAt    DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  trades          Trade[]
+  holdings        Holding[]
+}
+
+model Trade {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  brokerAccountId String
+  brokerAccount   BrokerAccount @relation(fields: [brokerAccountId], references: [id])
+  
+  symbol          String
+  assetType       AssetType
+  side            TradeSide
+  quantity        Decimal
+  price           Decimal
+  executedAt      DateTime
+  externalTradeId String? // for idempotency
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([brokerAccountId, externalTradeId])
+}
+
+model Holding {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  brokerAccountId String
+  brokerAccount   BrokerAccount @relation(fields: [brokerAccountId], references: [id])
+  
+  symbol          String
+  quantity        Decimal
+  averagePrice    Decimal
+  marketValue     Decimal
+  
+  updatedAt       DateTime @updatedAt
+
+  @@unique([brokerAccountId, symbol])
+}
+
+model PerformanceMetric {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  
+  date            DateTime @default(now()) // Snapshot date
+  totalReturn     Decimal
+  ytdReturn       Decimal
+  dailyReturn     Decimal
+  winRate         Decimal
+  avgWin          Decimal
+  avgLoss         Decimal
+  profitFactor    Decimal
+  maxDrawdown     Decimal
+  riskScore       Int      // 1-5
+  
+  createdAt       DateTime @default(now())
+}
+
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String
+  follower    User     @relation("UserFollowing", fields: [followerId], references: [id])
+  followingId String
+  following   User     @relation("UserFollowers", fields: [followingId], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@unique([followerId, followingId])
+}
+
+model Activity {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      String   // TRADE, FOLLOW, PERFORMANCE_UPDATE
+  data      Json?
+  createdAt DateTime @default(now())
+}
+
+model SyncLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  status    String   // SUCCESS, FAILED
+  message   String?
+  createdAt DateTime @default(now())
+}
+
+model Flag {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  reason    String
+  resolved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
