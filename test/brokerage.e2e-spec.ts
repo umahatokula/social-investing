@@ -4,6 +4,7 @@ import request from 'supertest';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/prisma/prisma.service';
 import { AuthService } from './../src/auth/auth.service';
+import { resetDb } from './utils/reset-db';
 
 describe('BrokerageController (e2e)', () => {
   let app: INestApplication;
@@ -21,9 +22,7 @@ describe('BrokerageController (e2e)', () => {
     prisma = app.get(PrismaService);
     authService = app.get(AuthService);
     
-    // Clean up DB
-    await prisma.brokerAccount.deleteMany();
-    await prisma.user.deleteMany();
+    await resetDb(prisma);
 
     // Create User and get Token
     const user = await authService.register({
@@ -39,8 +38,7 @@ describe('BrokerageController (e2e)', () => {
   });
 
   afterAll(async () => {
-    await prisma.brokerAccount.deleteMany();
-    await prisma.user.deleteMany();
+    await resetDb(prisma);
     await app.close();
   });
 

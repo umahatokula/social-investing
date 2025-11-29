@@ -3,6 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/prisma/prisma.service';
+import { resetDb } from './utils/reset-db';
 
 describe('AuthController (e2e)', () => {
   let app: INestApplication;
@@ -17,12 +18,11 @@ describe('AuthController (e2e)', () => {
     await app.init();
     prisma = app.get(PrismaService);
     
-    // Clean up DB
-    await prisma.user.deleteMany();
+    await resetDb(prisma);
   });
 
   afterAll(async () => {
-    await prisma.user.deleteMany();
+    await resetDb(prisma);
     await app.close();
   });
 

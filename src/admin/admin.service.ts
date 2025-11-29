@@ -6,18 +6,38 @@ import { UserStatus } from '@prisma/client';
 export class AdminService {
   constructor(private prisma: PrismaService) {}
 
-  async banUser(userId: string) {
-    return this.prisma.user.update({
+  async banUser(userId: string, actorId?: string) {
+    const user = await this.prisma.user.update({
       where: { id: userId },
       data: { status: UserStatus.BANNED },
     });
+    if (actorId) {
+      await this.prisma.adminAuditLog.create({
+        data: {
+          actorId,
+          action: 'BAN_USER',
+          targetId: userId,
+        },
+      });
+    }
+    return user;
   }
 
-  async unbanUser(userId: string) {
-    return this.prisma.user.update({
+  async unbanUser(userId: string, actorId?: string) {
+    const user = await this.prisma.user.update({
       where: { id: userId },
       data: { status: UserStatus.ACTIVE },
     });
+    if (actorId) {
+      await this.prisma.adminAuditLog.create({
+        data: {
+          actorId,
+          action: 'UNBAN_USER',
+          targetId: userId,
+        },
+      });
+    }
+    return user;
   }
 
   async getSystemLogs() {

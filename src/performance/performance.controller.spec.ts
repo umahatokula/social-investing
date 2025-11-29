@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PerformanceController } from './performance.controller';
+import { PerformanceService } from './performance.service';
 
 describe('PerformanceController', () => {
   let controller: PerformanceController;
@@ -7,6 +8,7 @@ describe('PerformanceController', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [PerformanceController],
+      providers: [{ provide: PerformanceService, useValue: { getMetrics: jest.fn() } }],
     }).compile();
 
     controller = module.get<PerformanceController>(PerformanceController);

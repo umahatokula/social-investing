@@ -5,14 +5,27 @@ import { PrismaService } from '../prisma/prisma.service';
 export class ActivityService {
   constructor(private prisma: PrismaService) {}
 
-  async logActivity(userId: string, type: string, data: any) {
-    return this.prisma.activity.create({
+  async logActivity(userId: string, type: string, data: any, notifyFollowers = false) {
+    const activity = await this.prisma.activity.create({
       data: {
         userId,
         type,
         data,
       },
     });
+
+    if (notifyFollowers) {
+      const followers = await this.prisma.follow.findMany({
+        where: { followingId: userId },
+        select: { followerId: true },
+      });
+
+      for (const follower of followers) {
+        await this.createNotification(follower.followerId, type, data);
+      }
+    }
+
+    return activity;
   }
 
   async getFeed(userId: string) {
@@ -43,6 +56,34 @@ export class ActivityService {
         },
       },
       take: 20,
+    });
+  }
+
+  async getGlobalFeed(limit = 20) {
+    return this.prisma.activity.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      include: {
+        user: {
+          select: {
+            id: true,
+            alias: true,
+            firstName: true,
+            lastName: true,
+            avatarUrl: true,
+          },
+        },
+      },
+    });
+  }
+
+  async createNotification(userId: string, type: string, data: any) {
+    return this.prisma.notification.create({
+      data: {
+        userId,
+        type,
+        data,
+      },
     });
   }
 }

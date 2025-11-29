@@ -1,10 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TradeSide } from '@prisma/client';
+import { PriceService } from './price.service';
 
 @Injectable()
 export class PortfolioService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private priceService: PriceService,
+  ) {}
 
   async calculateHoldings(userId: string) {
     // 1. Get all trades for user
@@ -41,8 +45,7 @@ export class PortfolioService {
     for (const [key, position] of holdingsMap.entries()) {
       const [brokerAccountId, symbol] = key.split(':');
       
-      // Mock current price for market value (In real app, fetch from price feed)
-      const currentPrice = 150; // Mock
+      const currentPrice = await this.priceService.getPrice(symbol, position.costBasis);
       const marketValue = position.quantity * currentPrice;
 
       if (position.quantity > 0) {
@@ -90,9 +93,34 @@ export class PortfolioService {
   async getPortfolioSummary(userId: string) {
     const holdings = await this.getHoldings(userId);
     const totalValue = holdings.reduce((sum, h) => sum + Number(h.marketValue), 0);
+    const costBasis = holdings.reduce((sum, h) => sum + Number(h.averagePrice) * Number(h.quantity), 0);
+    const totalGainLoss = totalValue - costBasis;
+    const totalReturnPct = costBasis > 0 ? totalGainLoss / costBasis : 0;
     return {
       totalValue,
+      totalGainLoss,
+      totalReturnPct,
       holdingsCount: holdings.length,
     };
+  }
+
+  async createEquitySnapshot(userId: string, asOf: Date = new Date()) {
+    const summary = await this.getPortfolioSummary(userId);
+    return this.prisma.equitySnapshot.upsert({
+      where: {
+        userId_date: {
+          userId,
+          date: new Date(asOf.toDateString()),
+        },
+      },
+      update: {
+        equity: summary.totalValue,
+      },
+      create: {
+        userId,
+        date: new Date(asOf.toDateString()),
+        equity: summary.totalValue,
+      },
+    });
   }
 }

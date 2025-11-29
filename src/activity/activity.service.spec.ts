@@ -1,18 +1,28 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { ActivityService } from './activity.service';
 
 describe('ActivityService', () => {
-  let service: ActivityService;
+  const createMock = jest.fn();
+  const findManyMock = jest.fn();
+  const notificationCreateMock = jest.fn();
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [ActivityService],
-    }).compile();
+  const prismaMock: any = {
+    activity: { create: createMock, findMany: findManyMock },
+    follow: { findMany: jest.fn().mockResolvedValue([{ followerId: 'f-1' }]) },
+    notification: { create: notificationCreateMock },
+  };
 
-    service = module.get<ActivityService>(ActivityService);
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
+  it('logs activity and notifies followers when requested', async () => {
+    createMock.mockResolvedValue({ id: 'a1' });
+    const service = new ActivityService(prismaMock);
+    await service.logActivity('u1', 'TRADE_SYNCED', { symbol: 'AAPL' }, true);
+
+    expect(createMock).toHaveBeenCalled();
+    expect(notificationCreateMock).toHaveBeenCalledWith({
+      data: expect.objectContaining({ userId: 'f-1', type: 'TRADE_SYNCED' }),
+    });
   });
 });

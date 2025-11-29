@@ -1,8 +1,10 @@
 import { Controller, Get, UseGuards, Request, Patch, Body } from '@nestjs/common';
 import { UserService } from './user.service';
 import { AuthGuard } from '@nestjs/passport';
-import { Prisma } from '@prisma/client';
+import { UpdateUserDto } from './dto/user.dto';
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('users')
 @Controller('users')
 @UseGuards(AuthGuard('jwt'))
 export class UserController {
@@ -14,7 +16,7 @@ export class UserController {
   }
 
   @Patch('me')
-  updateProfile(@Request() req, @Body() data: Prisma.UserUpdateInput) {
+  updateProfile(@Request() req, @Body() data: UpdateUserDto) {
     return this.userService.updateUser({
       where: { id: req.user.userId },
       data,

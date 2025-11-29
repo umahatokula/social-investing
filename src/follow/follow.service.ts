@@ -1,9 +1,13 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { ActivityService } from '../activity/activity.service';
 
 @Injectable()
 export class FollowService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private activityService: ActivityService,
+  ) {}
 
   async followUser(followerId: string, followingId: string) {
     if (followerId === followingId) {
@@ -24,12 +28,18 @@ export class FollowService {
       return existing; // Already following
     }
 
-    return this.prisma.follow.create({
+    const follow = await this.prisma.follow.create({
       data: {
         followerId,
         followingId,
       },
     });
+
+    await this.activityService.logActivity(followingId, 'NEW_FOLLOWER', {
+      followerId,
+      followingId,
+    }, true);
+    return follow;
   }
 
   async unfollowUser(followerId: string, followingId: string) {

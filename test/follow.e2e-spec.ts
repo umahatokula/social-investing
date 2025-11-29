@@ -4,6 +4,7 @@ import request from 'supertest';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/prisma/prisma.service';
 import { AuthService } from './../src/auth/auth.service';
+import { resetDb } from './utils/reset-db';
 
 describe('FollowController (e2e)', () => {
   let app: INestApplication;
@@ -24,9 +25,7 @@ describe('FollowController (e2e)', () => {
     prisma = app.get(PrismaService);
     authService = app.get(AuthService);
     
-    // Clean up DB
-    await prisma.follow.deleteMany();
-    await prisma.user.deleteMany();
+    await resetDb(prisma);
 
     // Create Follower User
     const follower = await authService.register({
@@ -52,8 +51,7 @@ describe('FollowController (e2e)', () => {
   });
 
   afterAll(async () => {
-    await prisma.follow.deleteMany();
-    await prisma.user.deleteMany();
+    await resetDb(prisma);
     await app.close();
   });
 

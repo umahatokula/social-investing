@@ -8,6 +8,7 @@ import { BrokerageService } from './../src/brokerage/brokerage.service';
 import { TradeService } from './../src/trade/trade.service';
 import { PortfolioService } from './../src/portfolio/portfolio.service';
 import { PerformanceService } from './../src/performance/performance.service';
+import { resetDb } from './utils/reset-db';
 
 describe('LeaderboardController (e2e)', () => {
   let app: INestApplication;
@@ -34,12 +35,7 @@ describe('LeaderboardController (e2e)', () => {
     portfolioService = app.get(PortfolioService);
     performanceService = app.get(PerformanceService);
     
-    // Clean up DB
-    await prisma.performanceMetric.deleteMany();
-    await prisma.holding.deleteMany();
-    await prisma.trade.deleteMany();
-    await prisma.brokerAccount.deleteMany();
-    await prisma.user.deleteMany();
+    await resetDb(prisma);
 
     // Create User
     const user = await authService.register({
@@ -62,11 +58,7 @@ describe('LeaderboardController (e2e)', () => {
   });
 
   afterAll(async () => {
-    await prisma.performanceMetric.deleteMany();
-    await prisma.holding.deleteMany();
-    await prisma.trade.deleteMany();
-    await prisma.brokerAccount.deleteMany();
-    await prisma.user.deleteMany();
+    await resetDb(prisma);
     await app.close();
   });
 

@@ -5,6 +5,7 @@ import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/prisma/prisma.service';
 import { AuthService } from './../src/auth/auth.service';
 import { Role, UserStatus } from '@prisma/client';
+import { resetDb } from './utils/reset-db';
 
 describe('AdminController (e2e)', () => {
   let app: INestApplication;
@@ -23,8 +24,7 @@ describe('AdminController (e2e)', () => {
     prisma = app.get(PrismaService);
     authService = app.get(AuthService);
     
-    // Clean up DB
-    await prisma.user.deleteMany();
+    await resetDb(prisma);
 
     // Create Admin User
     const admin = await authService.register({
@@ -39,8 +39,8 @@ describe('AdminController (e2e)', () => {
       where: { id: admin.id },
       data: { role: Role.ADMIN },
     });
-    
-    const adminLogin = await authService.login(admin);
+    const adminUser = await prisma.user.findUnique({ where: { id: admin.id } });
+    const adminLogin = await authService.login(adminUser!);
     adminToken = adminLogin.access_token;
 
     // Create User to Ban
@@ -55,7 +55,7 @@ describe('AdminController (e2e)', () => {
   });
 
   afterAll(async () => {
-    await prisma.user.deleteMany();
+    await resetDb(prisma);
     await app.close();
   });
 

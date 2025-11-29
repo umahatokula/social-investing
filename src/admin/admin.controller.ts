@@ -2,9 +2,12 @@ import { Controller, Post, Param, Get, UseGuards, Request, ForbiddenException } 
 import { AdminService } from './admin.service';
 import { AuthGuard } from '@nestjs/passport';
 import { Role } from '@prisma/client';
+import { ApiTags, ApiParam } from '@nestjs/swagger';
+import { AdminGuard } from './admin.guard';
 
+@ApiTags('admin')
 @Controller('admin')
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(AuthGuard('jwt'), AdminGuard)
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
@@ -13,22 +16,22 @@ export class AdminController {
   // Let's do a quick check here.
   private checkAdmin(user: any) {
     if (user.role !== Role.ADMIN) {
-      // For testing purposes, we might allow if email contains 'admin' or just skip if we seed an admin user.
-      // But let's enforce it and ensure we seed an admin in tests.
-      // throw new ForbiddenException('Admin access required');
+      throw new ForbiddenException('Admin access required');
     }
   }
 
+  @ApiParam({ name: 'userId', type: String })
   @Post('ban/:userId')
   async banUser(@Request() req, @Param('userId') userId: string) {
     this.checkAdmin(req.user);
-    return this.adminService.banUser(userId);
+    return this.adminService.banUser(userId, req.user.userId);
   }
 
+  @ApiParam({ name: 'userId', type: String })
   @Post('unban/:userId')
   async unbanUser(@Request() req, @Param('userId') userId: string) {
     this.checkAdmin(req.user);
-    return this.adminService.unbanUser(userId);
+    return this.adminService.unbanUser(userId, req.user.userId);
   }
 
   @Get('logs')

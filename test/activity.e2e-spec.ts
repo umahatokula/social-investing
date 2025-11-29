@@ -4,6 +4,7 @@ import request from 'supertest';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/prisma/prisma.service';
 import { AuthService } from './../src/auth/auth.service';
+import { resetDb } from './utils/reset-db';
 import { ActivityService } from './../src/activity/activity.service';
 
 describe('ActivityController (e2e)', () => {
@@ -25,9 +26,7 @@ describe('ActivityController (e2e)', () => {
     authService = app.get(AuthService);
     activityService = app.get(ActivityService);
     
-    // Clean up DB
-    await prisma.activity.deleteMany();
-    await prisma.user.deleteMany();
+  await resetDb(prisma);
 
     // Create User
     const user = await authService.register({
@@ -46,11 +45,10 @@ describe('ActivityController (e2e)', () => {
     await activityService.logActivity(userId, 'TEST_ACTION', { foo: 'bar' });
   });
 
-  afterAll(async () => {
-    await prisma.activity.deleteMany();
-    await prisma.user.deleteMany();
-    await app.close();
-  });
+afterAll(async () => {
+  await resetDb(prisma);
+  await app.close();
+});
 
   it('/activity/feed (GET)', () => {
     return request(app.getHttpServer())

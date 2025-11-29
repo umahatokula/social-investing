@@ -14,6 +14,9 @@ export class AuthService {
   async validateUser(email: string, pass: string): Promise<any> {
     const user = await this.userService.findOne({ email });
     if (user && (await bcrypt.compare(pass, user.passwordHash))) {
+      if (user.status === 'BANNED') {
+        throw new UnauthorizedException('User is banned');
+      }
       const { passwordHash, ...result } = user;
       return result;
     }

@@ -7,6 +7,7 @@ import { AuthService } from './../src/auth/auth.service';
 import { BrokerageService } from './../src/brokerage/brokerage.service';
 import { TradeService } from './../src/trade/trade.service';
 import { FollowService } from './../src/follow/follow.service';
+import { resetDb } from './utils/reset-db';
 
 describe('CopyTradeController (e2e)', () => {
   let app: INestApplication;
@@ -34,11 +35,7 @@ describe('CopyTradeController (e2e)', () => {
     tradeService = app.get(TradeService);
     followService = app.get(FollowService);
     
-    // Clean up DB
-    await prisma.trade.deleteMany();
-    await prisma.follow.deleteMany();
-    await prisma.brokerAccount.deleteMany();
-    await prisma.user.deleteMany();
+    await resetDb(prisma);
 
     // Create Copier User
     const copier = await authService.register({
@@ -72,10 +69,7 @@ describe('CopyTradeController (e2e)', () => {
   });
 
   afterAll(async () => {
-    await prisma.trade.deleteMany();
-    await prisma.follow.deleteMany();
-    await prisma.brokerAccount.deleteMany();
-    await prisma.user.deleteMany();
+    await resetDb(prisma);
     await app.close();
   });
 

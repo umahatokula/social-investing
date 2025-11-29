@@ -6,6 +6,7 @@ import { PrismaService } from './../src/prisma/prisma.service';
 import { AuthService } from './../src/auth/auth.service';
 import { BrokerageService } from './../src/brokerage/brokerage.service';
 import { TradeService } from './../src/trade/trade.service';
+import { resetDb } from './utils/reset-db';
 
 describe('PortfolioController (e2e)', () => {
   let app: INestApplication;
@@ -28,11 +29,7 @@ describe('PortfolioController (e2e)', () => {
     brokerageService = app.get(BrokerageService);
     tradeService = app.get(TradeService);
     
-    // Clean up DB
-    await prisma.holding.deleteMany();
-    await prisma.trade.deleteMany();
-    await prisma.brokerAccount.deleteMany();
-    await prisma.user.deleteMany();
+    await resetDb(prisma);
 
     // Create User
     const user = await authService.register({
@@ -55,10 +52,7 @@ describe('PortfolioController (e2e)', () => {
   });
 
   afterAll(async () => {
-    await prisma.holding.deleteMany();
-    await prisma.trade.deleteMany();
-    await prisma.brokerAccount.deleteMany();
-    await prisma.user.deleteMany();
+    await resetDb(prisma);
     await app.close();
   });
 

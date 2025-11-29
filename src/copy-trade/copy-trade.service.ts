@@ -1,12 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { FollowService } from '../follow/follow.service';
+import { ActivityService } from '../activity/activity.service';
 
 @Injectable()
 export class CopyTradeService {
   constructor(
     private prisma: PrismaService,
     private followService: FollowService,
+    private activityService: ActivityService,
   ) {}
 
   async copyTrade(userId: string, tradeId: string) {
@@ -33,6 +35,24 @@ export class CopyTradeService {
       throw new Error('You must follow the trader to copy their trades');
     }
 
+    const session = await this.prisma.copyTradeSession.upsert({
+      where: {
+        followerId_traderId: {
+          followerId: userId,
+          traderId: tradeToCopy.userId,
+        },
+      },
+      update: {
+        status: 'ACTIVE',
+      },
+      create: {
+        followerId: userId,
+        traderId: tradeToCopy.userId,
+        allocationPct: 100,
+        status: 'ACTIVE',
+      },
+    });
+
     // 3. Simulate creating a trade for the copier
     // In a real app, this would place an order with the broker
     // Here we just create a Trade record linked to a mock broker account for the user
@@ -52,7 +72,7 @@ export class CopyTradeService {
       });
     }
 
-    return this.prisma.trade.create({
+    const copiedTrade = await this.prisma.trade.create({
       data: {
         userId,
         brokerAccountId: brokerAccount.id,
@@ -65,5 +85,20 @@ export class CopyTradeService {
         externalTradeId: `copy-${tradeToCopy.id}-${Date.now()}`,
       },
     });
+
+    await this.prisma.copyTradeExecution.create({
+      data: {
+        sessionId: session.id,
+        sourceTradeId: tradeToCopy.id,
+        copiedTradeId: copiedTrade.id,
+      },
+    });
+
+    await this.activityService.logActivity(userId, 'COPY_TRADE', {
+      sourceTradeId: tradeToCopy.id,
+      copiedTradeId: copiedTrade.id,
+    });
+
+    return copiedTrade;
   }
 }

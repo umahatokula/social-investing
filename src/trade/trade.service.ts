@@ -1,15 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { BrokerageService } from '../brokerage/brokerage.service';
-import { BrokerageProviderRegistry } from '../brokerage/registry/brokerage-provider.registry';
 import { AssetType, TradeSide } from '@prisma/client';
+import { ActivityService } from '../activity/activity.service';
 
 @Injectable()
 export class TradeService {
   constructor(
     private prisma: PrismaService,
     private brokerageService: BrokerageService,
-    private registry: BrokerageProviderRegistry,
+    private activityService: ActivityService,
   ) {}
 
   async syncTradesForUser(userId: string) {
@@ -18,32 +18,19 @@ export class TradeService {
 
     for (const account of accounts) {
       try {
-        const provider = this.registry.getProvider(account.brokerName);
-        const trades = await provider.fetchTrades(account);
-
-        for (const trade of trades) {
-          // Upsert trade to avoid duplicates
-          const savedTrade = await this.prisma.trade.upsert({
-            where: {
-              brokerAccountId_externalTradeId: {
-                brokerAccountId: account.id,
-                externalTradeId: trade.externalId,
-              },
-            },
-            update: {}, // No update if exists
-            create: {
-              userId: account.userId,
-              brokerAccountId: account.id,
-              externalTradeId: trade.externalId,
-              symbol: trade.symbol,
-              assetType: trade.assetType as AssetType, // Ensure enum match
-              side: trade.side as TradeSide,
-              quantity: trade.quantity,
-              price: trade.price,
-              executedAt: trade.executedAt,
-            },
+        const syncResult = await this.brokerageService.syncAccount(account.id);
+        // Fetch latest trades per account to push into results list
+        const syncedTrades = await this.prisma.trade.findMany({
+          where: { brokerAccountId: account.id },
+          orderBy: { executedAt: 'desc' },
+          take: syncResult.trades,
+        });
+        for (const trade of syncedTrades) {
+          await this.activityService.logActivity(account.userId, 'TRADE_SYNCED', {
+            tradeId: trade.id,
+            symbol: trade.symbol,
           });
-          results.push(savedTrade);
+          results.push(trade);
         }
       } catch (error) {
         console.error(`Failed to sync trades for account ${account.id}:`, error);

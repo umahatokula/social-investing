@@ -38,6 +38,12 @@ enum TradeSide {
   SELL
 }
 
+enum CopyTradeStatus {
+  ACTIVE
+  STOPPED
+  SUSPENDED
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -63,6 +69,12 @@ model User {
   activities     Activity[]
   syncLogs       SyncLog[]
   flags          Flag[]
+  notifications  Notification[]
+  copyTradeSessionsAsFollower CopyTradeSession[] @relation("FollowerSessions")
+  copyTradeSessionsAsTrader   CopyTradeSession[] @relation("TraderSessions")
+  adminAuditLogs AdminAuditLog[] @relation("AdminActor")
+  equitySnapshots EquitySnapshot[]
+  monthlyReturns  MonthlyReturn[]
 }
 
 model BrokerAccount {
@@ -140,6 +152,31 @@ model PerformanceMetric {
   createdAt       DateTime @default(now())
 }
 
+// Daily equity curve snapshot for charts / historical performance
+model EquitySnapshot {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  date      DateTime
+  equity    Decimal  // total portfolio value at date close
+  createdAt DateTime @default(now())
+
+  @@unique([userId, date])
+}
+
+// Monthly returns table (heatmap)
+model MonthlyReturn {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  year      Int
+  month     Int
+  returnPct Decimal
+  createdAt DateTime @default(now())
+
+  @@unique([userId, year, month])
+}
+
 model Follow {
   id          String   @id @default(cuid())
   followerId  String
@@ -175,5 +212,53 @@ model Flag {
   user      User     @relation(fields: [userId], references: [id])
   reason    String
   resolved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      String
+  data      Json?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  readAt    DateTime?
+}
+
+// Copy-trading relationship and executions
+model CopyTradeSession {
+  id           String           @id @default(cuid())
+  followerId   String
+  follower     User             @relation("FollowerSessions", fields: [followerId], references: [id])
+  traderId     String
+  trader       User             @relation("TraderSessions", fields: [traderId], references: [id])
+  allocationPct Decimal         // 0-100
+  status       CopyTradeStatus  @default(ACTIVE)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  executions   CopyTradeExecution[]
+
+  @@unique([followerId, traderId])
+}
+
+model CopyTradeExecution {
+  id              String   @id @default(cuid())
+  sessionId       String
+  session         CopyTradeSession @relation(fields: [sessionId], references: [id])
+  sourceTradeId   String
+  copiedTradeId   String? // Trade created for follower
+  pnl             Decimal? // optional P/L for the simulated execution
+  createdAt       DateTime @default(now())
+}
+
+// Audit log for admin actions
+model AdminAuditLog {
+  id        String   @id @default(cuid())
+  actorId   String
+  actor     User     @relation("AdminActor", fields: [actorId], references: [id])
+  action    String
+  targetId  String?
+  metadata  Json?
   createdAt DateTime @default(now())
 }
