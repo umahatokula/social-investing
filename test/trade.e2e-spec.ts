@@ -42,7 +42,7 @@ describe('TradeController (e2e)', () => {
     userId = user.id;
 
     // Connect Broker Account (Fake)
-    await brokerageService.connectAccount(userId, 'fake');
+    await brokerageService.connectAccount(userId, 'finnhub-demo');
   });
 
   afterAll(async () => {

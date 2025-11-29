@@ -51,7 +51,7 @@ describe('LeaderboardController (e2e)', () => {
     userId = user.id;
 
     // Setup Data & Metrics
-    await brokerageService.connectAccount(userId, 'fake');
+    await brokerageService.connectAccount(userId, 'finnhub-demo');
     await tradeService.syncTradesForUser(userId);
     await portfolioService.calculateHoldings(userId);
     await performanceService.calculateMetrics(userId);

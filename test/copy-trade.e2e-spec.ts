@@ -60,7 +60,7 @@ describe('CopyTradeController (e2e)', () => {
     traderId = trader.id;
 
     // Connect Trader Broker & Sync Trades
-    await brokerageService.connectAccount(traderId, 'fake');
+    await brokerageService.connectAccount(traderId, 'finnhub-demo');
     const trades = await tradeService.syncTradesForUser(traderId);
     tradeToCopyId = trades[0].id;
 

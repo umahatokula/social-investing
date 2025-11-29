@@ -3,6 +3,8 @@ import { UserService } from '../user/user.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { Prisma } from '@prisma/client';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import { BadRequestException } from '@nestjs/common';
 
 @Injectable()
 export class AuthService {
@@ -33,11 +35,22 @@ export class AuthService {
   async register(data: Prisma.UserCreateInput) {
     const salt = await bcrypt.genSalt();
     const passwordHash = await bcrypt.hash(data.passwordHash, salt);
-    const user = await this.userService.createUser({
-      ...data,
-      passwordHash,
-    });
-    const { passwordHash: _, ...result } = user;
-    return result;
+    try {
+      const user = await this.userService.createUser({
+        ...data,
+        passwordHash,
+      });
+      const { passwordHash: _, ...result } = user;
+      return result;
+    } catch (err) {
+      if (err instanceof PrismaClientKnownRequestError && err.code === 'P2002') {
+        const target = Array.isArray(err.meta?.target) ? err.meta.target : [];
+        if (target.includes('alias')) {
+          throw new BadRequestException('Alias already in use');
+        }
+        throw new BadRequestException('Email already in use');
+      }
+      throw err;
+    }
   }
 }

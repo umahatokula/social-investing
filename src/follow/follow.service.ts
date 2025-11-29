@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { ActivityService } from '../activity/activity.service';
 
 @Injectable()
@@ -28,12 +29,20 @@ export class FollowService {
       return existing; // Already following
     }
 
-    const follow = await this.prisma.follow.create({
-      data: {
-        followerId,
-        followingId,
-      },
-    });
+    let follow;
+    try {
+      follow = await this.prisma.follow.create({
+        data: {
+          followerId,
+          followingId,
+        },
+      });
+    } catch (err) {
+      if (err instanceof PrismaClientKnownRequestError && err.code === 'P2003') {
+        throw new BadRequestException('Follower or target user not found');
+      }
+      throw err;
+    }
 
     await this.activityService.logActivity(followingId, 'NEW_FOLLOWER', {
       followerId,

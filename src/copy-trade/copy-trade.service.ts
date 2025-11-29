@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { FollowService } from '../follow/follow.service';
 import { ActivityService } from '../activity/activity.service';
@@ -18,7 +18,7 @@ export class CopyTradeService {
     });
 
     if (!tradeToCopy) {
-      throw new Error('Trade not found');
+      throw new NotFoundException('Trade not found');
     }
 
     // 2. Check if user is following the trader
@@ -32,7 +32,7 @@ export class CopyTradeService {
     });
 
     if (!isFollowing) {
-      throw new Error('You must follow the trader to copy their trades');
+      throw new BadRequestException('You must follow the trader to copy their trades');
     }
 
     const session = await this.prisma.copyTradeSession.upsert({

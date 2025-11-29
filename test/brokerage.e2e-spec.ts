@@ -46,10 +46,10 @@ describe('BrokerageController (e2e)', () => {
     return request(app.getHttpServer())
       .post('/brokerage/connect')
       .set('Authorization', `Bearer ${jwtToken}`)
-      .send({ brokerName: 'fake' })
+      .send({ brokerName: 'finnhub-demo' })
       .expect(201)
       .expect((res) => {
-        expect(res.body.brokerName).toEqual('fake');
+        expect(res.body.brokerName).toEqual('finnhub-demo');
         expect(res.body.userId).toBeDefined();
       });
   });

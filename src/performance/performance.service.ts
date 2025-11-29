@@ -22,15 +22,16 @@ export class PerformanceService {
       orderBy: { date: 'desc' },
       take: 2,
     });
-    const latestEquity = summary.totalValue;
-    const previousEquity = snapshots[1]?.equity ?? summary.totalValue;
-    const equityStartYear =
+    const latestEquity = Number(summary.totalValue);
+    const previousEquity = Number(snapshots[1]?.equity ?? summary.totalValue);
+    const equityStartYear = Number(
       (
         await this.prisma.equitySnapshot.findFirst({
           where: { userId, date: { gte: startOfYear } },
           orderBy: { date: 'asc' },
         })
-      )?.equity ?? latestEquity;
+      )?.equity ?? summary.totalValue,
+    );
 
     // Basic win/loss metrics based on closed trades
     const closedTrades = await this.prisma.trade.findMany({
@@ -44,8 +45,8 @@ export class PerformanceService {
     const losses = pnl.filter((p) => p < 0);
 
     const totalReturn = summary.totalReturnPct;
-    const ytdReturn = equityStartYear > 0 ? (latestEquity - Number(equityStartYear)) / Number(equityStartYear) : 0;
-    const dailyReturn = previousEquity > 0 ? (latestEquity - Number(previousEquity)) / Number(previousEquity) : 0;
+    const ytdReturn = equityStartYear > 0 ? (latestEquity - equityStartYear) / equityStartYear : 0;
+    const dailyReturn = previousEquity > 0 ? (latestEquity - previousEquity) / previousEquity : 0;
 
     const winRate = closedTrades.length ? wins.length / closedTrades.length : 0;
     const avgWin = wins.length ? wins.reduce((a, b) => a + b, 0) / wins.length : 0;

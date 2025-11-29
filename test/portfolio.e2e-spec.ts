@@ -45,7 +45,7 @@ describe('PortfolioController (e2e)', () => {
     userId = user.id;
 
     // Connect Broker Account (Fake)
-    await brokerageService.connectAccount(userId, 'fake');
+    await brokerageService.connectAccount(userId, 'finnhub-demo');
     
     // Sync Trades (Fake provider returns 1 BUY AAPL, 1 SELL TSLA)
     await tradeService.syncTradesForUser(userId);
